@@ -39,6 +39,18 @@ namespace AzangaraUnpacker
       Uri folderUri = new Uri(folder);
       return Uri.UnescapeDataString(folderUri.MakeRelativeUri(pathUri).ToString());
     }
+
+    static byte[] TransformTxt(byte[] bytes)
+    {
+      var newArr = new byte[bytes.Length];
+      for (var index = 0; index < bytes.Length; index++)
+      {
+        var b = bytes[index];
+        newArr[index] = (byte) (b << 4 | b >> 4);
+      }
+
+      return newArr;
+    }
     
     public static int Main(string[] args)
     {
@@ -83,7 +95,9 @@ namespace AzangaraUnpacker
             
             Console.WriteLine($"Unpacking {name}...");
 
-            File.WriteAllBytes(path, reader.ReadBytes(size));
+            var data = reader.ReadBytes(size);
+            if (name.EndsWith(".txt")) data = TransformTxt(data);
+            File.WriteAllBytes(path, data);
             reader.BaseStream.Seek(pos, SeekOrigin.Begin);
           }
         }
@@ -106,6 +120,7 @@ namespace AzangaraUnpacker
           table.AddRange(Encoding.UTF8.GetBytes(fileKey).PadRight(128));
           table.AddRange(BitConverter.GetBytes((int) (baseOffset + body.Count)));
           table.AddRange(BitConverter.GetBytes((int) (data.Length)));
+          if (fileKey.EndsWith(".txt")) data = TransformTxt(data);
           body.AddRange(data);
         }
 
@@ -134,19 +149,3 @@ namespace AzangaraUnpacker
     }
   }
 }
-
-/*
-struct FileDefinition {
-    char data[128];
-    s32 offset;
-    s32 size;
-};
-
-struct Pak {
-    char magic[4];
-    s16 version;
-    s32 dataSize;
-    FileDefinition fileDefinition[dataSize / 136];
-};
-
-Pak pak @ 0x00;*/
